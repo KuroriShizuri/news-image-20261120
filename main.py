@@ -3,8 +3,9 @@
 
 Reads entry.png from this script's own directory, validates it (PNG magic
 bytes and exactly 1024x1024 pixels), copies it to
-$MAKEFUN_OUTPUT_DIR/entry.png (/output by default), then verifies the copy
-by file size and SHA-256 digest and prints the byte count.
+$MAKEFUN_OUTPUT_DIR/entry.png (/output by default), then re-validates the
+copy itself (magic bytes and dimensions) and verifies it by file size and
+SHA-256 digest, printing the byte count and digest.
 
 Python 3.13, standard library only, no network.
 """
@@ -57,6 +58,15 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
     dest = os.path.join(out_dir, "entry.png")
     shutil.copyfile(SOURCE, dest)
+
+    # Re-validate the copy itself: a truncated or corrupted write must
+    # fail here, not pass on size/digest luck alone.
+    dest_width, dest_height = read_dimensions(dest)
+    if (dest_width, dest_height) != EXPECTED_SIZE:
+        raise ValueError(
+            "copied entry.png must be 1024x1024, got %dx%d"
+            % (dest_width, dest_height)
+        )
 
     dest_size = os.path.getsize(dest)
     dest_hash = sha256_of(dest)
